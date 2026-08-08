@@ -114,10 +114,14 @@ body.playing #hero{animation:pop .55s cubic-bezier(.2,1.5,.4,1), bob 2.6s ease-i
   transition:transform .12s ease, box-shadow .12s ease}
 .playbtn:active{transform:translateY(4px);box-shadow:0 2px 0 #7E5510,0 6px 12px rgba(0,0,0,.4)}
 .playbtn>svg:last-child{width:42%;height:42%;fill:#4A1020}
-.ring{position:absolute;inset:-8px;transform:rotate(-90deg);pointer-events:none}
-.ring circle{fill:none;stroke-width:4}
-.ring .bg{stroke:rgba(255,255,255,.13)}
-.ring .fg{stroke:#FFF0C6;stroke-dasharray:var(--c);stroke-dashoffset:var(--c);transition:stroke-dashoffset .25s linear}
+/* progress ring sits on the button face, concentric with it */
+.ring{position:absolute;inset:4px;transform:rotate(-90deg);pointer-events:none;overflow:visible}
+.ring circle{fill:none;stroke-width:6}
+.ring .bg{stroke:rgba(90,20,45,.16)}
+.ring .fg{stroke:#7A1230;stroke-linecap:round;
+  stroke-dasharray:var(--c);stroke-dashoffset:var(--c);
+  transition:stroke-dashoffset .25s linear;opacity:0}
+body.playing .ring .fg,.playbtn.progress .ring .fg{opacity:.85}
 
 .hint{margin-top:5px;font-size:clamp(10px,2.7vw,13px);color:#FFD9A0;opacity:.68;letter-spacing:.05em;
   animation:nudge 2s ease-in-out infinite;transition:opacity .4s}
@@ -165,7 +169,8 @@ body.playing .hint,body.touched .hint{opacity:0}
   .nameplate .en{font-size:9px;letter-spacing:.18em}
   .playbtn{width:clamp(38px,9vh,52px);height:clamp(38px,9vh,52px);margin-top:3px;
     box-shadow:0 4px 0 #7E5510,0 8px 14px rgba(0,0,0,.4)}
-  .ring{inset:-5px}
+  .ring{inset:3px}
+  .ring circle{stroke-width:7}
   .halo::after{border-width:2px}
 }
 @media (prefers-reduced-motion:reduce){
@@ -296,6 +301,7 @@ function select(i){
   audio.src=`assets/audio/${GODS[i].id}.mp3`;
   audio.currentTime=0;
   ringFg.style.strokeDashoffset=C;
+  play.classList.remove('progress');
   audio.play().catch(()=>{});
   burst();
 }
@@ -313,11 +319,12 @@ audio.addEventListener('play',()=>{
 ['pause','ended'].forEach(ev=>audio.addEventListener(ev,()=>{
   document.body.classList.remove('playing');
   icon.setAttribute('d',PLAY_D); play.setAttribute('aria-label','Play mantra');
-  if(ev==='ended') ringFg.style.strokeDashoffset=C;
+  if(ev==='ended'){ ringFg.style.strokeDashoffset=C; play.classList.remove('progress'); }
 }));
 audio.addEventListener('timeupdate',()=>{
   if(!audio.duration) return;
   ringFg.style.strokeDashoffset = C*(1-audio.currentTime/audio.duration);
+  play.classList.toggle('progress', audio.currentTime>0.05);
 });
 
 document.addEventListener('keydown',e=>{

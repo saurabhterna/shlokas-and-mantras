@@ -114,14 +114,14 @@ body.playing #hero{animation:pop .55s cubic-bezier(.2,1.5,.4,1), bob 2.6s ease-i
   transition:transform .12s ease, box-shadow .12s ease}
 .playbtn:active{transform:translateY(4px);box-shadow:0 2px 0 #7E5510,0 6px 12px rgba(0,0,0,.4)}
 .playbtn>svg:last-child{width:42%;height:42%;fill:#4A1020}
-/* progress ring sits on the button face, concentric with it */
-.ring{position:absolute;inset:4px;transform:rotate(-90deg);pointer-events:none;overflow:visible}
-.ring circle{fill:none;stroke-width:6}
-.ring .bg{stroke:rgba(90,20,45,.16)}
-.ring .fg{stroke:#7A1230;stroke-linecap:round;
-  stroke-dasharray:var(--c);stroke-dashoffset:var(--c);
-  transition:stroke-dashoffset .25s linear;opacity:0}
-body.playing .ring .fg,.playbtn.progress .ring .fg{opacity:.85}
+/* progress reads as a slim bar under the name — nothing overlapping the button */
+.progress{width:min(58vw,240px);height:6px;border-radius:99px;margin-top:9px;
+  background:rgba(0,0,0,.22);box-shadow:inset 0 1px 2px rgba(0,0,0,.3);
+  overflow:hidden;opacity:0;transition:opacity .35s ease}
+body.playing .progress,body.hasprogress .progress{opacity:1}
+.progress i{display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--gold-deep),var(--gold) 60%,#FFF0C6);
+  transition:width .25s linear}
 
 .hint{margin-top:5px;font-size:clamp(10px,2.7vw,13px);color:#FFD9A0;opacity:.68;letter-spacing:.05em;
   animation:nudge 2s ease-in-out infinite;transition:opacity .4s}
@@ -196,12 +196,9 @@ body.playing .hint,body.touched .hint{opacity:0}
       <div class="en" id="nameEn">Ganesh</div>
     </div>
     <button class="playbtn" id="play" aria-label="Play mantra">
-      <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
-        <circle class="bg" cx="50" cy="50" r="46"></circle>
-        <circle class="fg" cx="50" cy="50" r="46"></circle>
-      </svg>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path id="icon" d="M8 5v14l11-7z"/></svg>
     </button>
+    <div class="progress" aria-hidden="true"><i id="bar"></i></div>
     <div class="hint">Pick a friend below ▾</div>
   </main>
 
@@ -226,9 +223,7 @@ const GODS = [
 const $ = s => document.querySelector(s);
 const audio=$('#audio'), hero=$('#hero'), play=$('#play'), icon=$('#icon');
 const nameDev=$('#nameDev'), nameEn=$('#nameEn'), fanInner=$('#fanInner');
-const ringFg=document.querySelector('.ring .fg');
-const C=2*Math.PI*46;
-ringFg.style.setProperty('--c',C);
+const bar=$('#bar');
 const PLAY_D='M8 5v14l11-7z', PAUSE_D='M6 5h4v14H6zm8 0h4v14h-4z';
 let current=-1;
 
@@ -258,8 +253,11 @@ function layout(){
   const rows=[];
   for(let i=0;i<n;i+=perRow) rows.push([i, Math.min(i+perRow, n)]);
 
+  // the selected tab scales to 1.22 and carries a ~9px glow ring, so the outermost
+  // circle needs that much extra room or it gets clipped at the screen edge
   const widest=Math.max(...rows.map(([a,b])=>b-a));
-  const tab=Math.max(44, Math.min(maxTab, avail/(1+(widest-1)*OVERLAP)));
+  const fits=(vw-40)/((widest-1)*OVERLAP + 1.24);
+  const tab=Math.max(44, Math.min(maxTab, avail/(1+(widest-1)*OVERLAP), fits));
   const step=tab*OVERLAP;
   const sag=Math.min(30, tab*0.30);
   const rowGap=tab*0.86;
@@ -300,8 +298,8 @@ function select(i){
   current=i; paint(i);
   audio.src=`assets/audio/${GODS[i].id}.mp3`;
   audio.currentTime=0;
-  ringFg.style.strokeDashoffset=C;
-  play.classList.remove('progress');
+  bar.style.width='0%';
+  document.body.classList.remove('hasprogress');
   audio.play().catch(()=>{});
   burst();
 }
@@ -319,12 +317,12 @@ audio.addEventListener('play',()=>{
 ['pause','ended'].forEach(ev=>audio.addEventListener(ev,()=>{
   document.body.classList.remove('playing');
   icon.setAttribute('d',PLAY_D); play.setAttribute('aria-label','Play mantra');
-  if(ev==='ended'){ ringFg.style.strokeDashoffset=C; play.classList.remove('progress'); }
+  if(ev==='ended'){ bar.style.width='0%'; document.body.classList.remove('hasprogress'); }
 }));
 audio.addEventListener('timeupdate',()=>{
   if(!audio.duration) return;
-  ringFg.style.strokeDashoffset = C*(1-audio.currentTime/audio.duration);
-  play.classList.toggle('progress', audio.currentTime>0.05);
+  bar.style.width = (audio.currentTime/audio.duration*100)+'%';
+  document.body.classList.toggle('hasprogress', audio.currentTime>0.05);
 });
 
 document.addEventListener('keydown',e=>{
